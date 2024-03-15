@@ -6,14 +6,13 @@ st.set_page_config(
 )
 
 
-    # Defines title of the main page with white text color
+# Defines title of the main page 
 st.markdown("<h1 style='text-align: center; color: white;'>Neural ODEs, Normalizing Flows et Latent ODEs</h1>", unsafe_allow_html=True)
 
-    # Defines introduction to the website
+# Defines introduction to the website
 st.write("Vous vous trouvez sur la page 🏠 Accueil de notre projet de recherche en Deep Learning.")
 st.write("Le site est découpé en plusieurs pages décrites ci-dessous.")
     
-    # Uses Markdown to create an unordered list with emojis
 st.markdown("""
     - 🏠 Accueil
     - 📕 Rapport du Projet : vous y trouverez le rapport écrit de notre projet de recherche. Disponible en visualisation sur le site et en pdf.
@@ -26,3 +25,4 @@ st.markdown("## Contact")
 st.markdown("- Arnaud FEYEL: arnaud.feyel@universite-paris-saclay.fr")
 st.markdown("- Malek BOUZIDI: malek.bouzidi@universite-paris-saclay.fr")
 st.markdown("- Noor SEMAAN: noor.semaan@universite-paris-saclay.fr")
+
