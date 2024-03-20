@@ -194,10 +194,13 @@ et une couche de sortie de dimension 2, sans biais (```nn.Linear(2, 2, bias=Fals
         main()
 
 elif page == "Latent ODE":
-    
+    #Noor
     st.write("This is the content of Latent 0DE")
     
     
 elif page == "Normalizing Flow":
-    
+    #Malek
+
     st.write("This is the content of Normalizing Flow")
+
+    st.write("Nous allons étudier de code")
