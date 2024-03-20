@@ -7,8 +7,9 @@ import pandas as pd
 import subprocess
 import matplotlib.pyplot as plt
 import sys
+import torch
 sys.path.append('sub_code/')  # Add the directory containing 'NEDO_user_code.py' to the Python path
-import NEDO_user_code
+import NEDO_original
 
 
 # Set page title and icon
@@ -49,7 +50,7 @@ et une couche de sortie de dimension 2, sans biais (```nn.Linear(2, 2, bias=Fals
         return int(re.search(r'\d+', filename).group())
 
     # Graph plot function
-    def plot_graph_1():
+    def plot_graph_example():
         st.title('Evolution du résultat')
 
         # Start button to initiate the animation
@@ -80,6 +81,37 @@ et une couche de sortie de dimension 2, sans biais (```nn.Linear(2, 2, bias=Fals
                 if restart_button:
                     start_progress = True  # Set the flag to start progress again
                 
+    def plot_graph_user():
+        st.title('Evolution du résultat')
+
+        # Start button to initiate the animation
+        if st.button("Commencer l'animation", key="start_user_animation"):
+            # Select folder containing PNG files
+            folder_path = "data/user_try"
+            st.empty()  # Placeholder for the slider
+
+            # Check if folder path is provided
+            if folder_path:
+                # Read PNG files from the folder
+                png_files = read_png_files(folder_path)
+
+                # Placeholder for the selected image
+                selected_image_placeholder = st.empty()
+
+                # Progress through the iterations automatically
+                for i in range(len(png_files) * 10):  # Progress through each step of 10
+                    time.sleep(0.0000001)  # Adjust the speed of progression
+                    iteration = i // 10 * 10  # Get the current iteration
+
+                    # Display the selected PNG file
+                    selected_png = os.path.join(folder_path, png_files[iteration // 10])
+                    selected_image_placeholder.image(selected_png, use_column_width=True)
+
+                # Button to restart the progress
+                restart_button = st.button("Recommencer l'animation", key="restart_button")
+                if restart_button:
+                    start_progress = True  # Set the flag to start progress again
+                
     def create_matrix():
         st.title("À votre tour !")
         st.write(r"""Essayez de résoudre votre équation différentielle dans $\mathbb{R}^{2}$ avec un NODE. 
@@ -90,18 +122,32 @@ et une couche de sortie de dimension 2, sans biais (```nn.Linear(2, 2, bias=Fals
 
         st.write(r"""Commencez par entrer votre matrice $A$.""")
 
-        matrix = np.zeros((2,2))
-        index_list = [[0,0], [0,1], [1,0], [1,1]]
+        matrix = [[0,0], [0,0]]
         value_00 = float(st.number_input(f"Ligne 1, Colonne 1", key = "00"))
-        matrix[0,0] = value_00
+        matrix[0][0] = value_00
         value_01 = float(st.number_input(f"Ligne 1, Colonne 2", key = "01"))
-        matrix[0,1] = value_01
+        matrix[0][1] = value_01
         value_10 = float(st.number_input(f"Ligne 2, Colonne 1", key = "10"))
-        matrix[1,0] = value_10
+        matrix[1][0] = value_10
         value_11 = float(st.number_input(f"Ligne 2, Colonne 2", key = "11"))
-        matrix[1,1] = value_11
-        return matrix
+        matrix[1][1] = value_11
 
+        print(type(matrix))
+        
+        return matrix
+    
+    def matrix_to_torch(matrix):
+        
+        if st.button("Enregistrer la matrice", key = "save_torch_matrix"):
+            
+            #Converting Matrix to torch
+            matrix = torch.tensor(matrix)
+            #matrix = matrix.clone().detach()
+            #matrix.requires_grad_(True)
+            
+            #Saving for call later
+            torch.save(matrix, 'data/matrix.pth')
+        
     def show_matrix(matrix):
         st.write("Votre matrice A en input")
         matrix_given = matrix
@@ -162,33 +208,36 @@ et une couche de sortie de dimension 2, sans biais (```nn.Linear(2, 2, bias=Fals
 
         # Prompt the user to enter the number of iterations
         iterations = st.number_input("Enter the number of iterations:", min_value=1, step=1)
-
+        
+        # Open a file in write mode
+        with open("data/iteration.py", "w") as file:
+        # Write the integer value as a Python variable assignment
+            file.write(f"user_it = {int(iterations)}")
+            st.write("it saved")
+        
         # Return the chosen loss function key and number of iterations
         return selected_key, iterations
     
     
-    def try_code(matrix, loss_function_key, iterations):
+    def try_code():
         # Button to run the code
         if st.button("Essayer le code soit même", key = "code"):
             # Execute the code
-            #try:                
-            NEDO_user_code.main(loss_function_key, matrix, iterations)
-                 
-            #except Exception as e:
-            #    # Display any errors that occur during execution
-            #    st.error(f"Error: {e}")
+             NEDO_original.main()
+
 
     def main():
         start_progress = False 
-        plot_graph_1()
+        plot_graph_example()
         matrix = create_matrix()
         show_matrix(matrix)
         check_conditions(matrix)
+        matrix_to_torch(matrix)
         loss_function_key, iterations = choose_parameters()
         st.write("Chosen Loss Function Key:", loss_function_key)
         st.write("Number of Iterations:", iterations)
-        iterations = int(iterations)
-        try_code(matrix, loss_function_key, iterations)
+        try_code()
+        plot_graph_user()
         
     if __name__ == '__main__':
         main()

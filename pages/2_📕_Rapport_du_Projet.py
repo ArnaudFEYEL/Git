@@ -21,5 +21,5 @@ def displayPDF(file):
     st.markdown(pdf_display, unsafe_allow_html=True)
 
 # Example usage
-file_path = "./text/Rapport_txt.pdf"  # Replace with your PDF file path
+file_path = "./text/Rapport_txt.pdf" 
 displayPDF(file_path)

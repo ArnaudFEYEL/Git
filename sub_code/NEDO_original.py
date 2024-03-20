@@ -2,7 +2,7 @@ import math
 import numpy as np
 from IPython.display import clear_output
 from tqdm import tqdm_notebook as tqdm
-import streamlit as st
+
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -15,13 +15,17 @@ from torch import Tensor
 from torch import nn
 from torch.nn  import functional as F 
 from torch.autograd import Variable
-
-import sys
-sys.path.append('data/user_try')  # Add the directory containing 'iteration.py' to the Python path
-import iteration as user_it
+import streamlit as st 
 
 use_cuda = torch.cuda.is_available()
 
+#Importing user's matrix, loss function and iterations
+given_matrix = torch.load('data/matrix.pth')
+
+import sys
+sys.path.append("data/user_try/iteration.py")
+import iteration
+    
 def ode_solve(z0, t0, t1, f):
     """
     Simplest Euler ODE initial value solver
@@ -52,9 +56,7 @@ class ODEF(nn.Module):
         )
         # grad method automatically sums gradients for batch items, we have to expand them back 
         if adfdp is not None:
-            adfdp = torch.cat([p_grad.flatten() for p_grad in adfdp if p_grad is not None]).unsqueeze(0)
-            #adfdp = torch.cat([p_grad.flatten() for p_grad in adfdp]).unsqueeze(0)
-
+            adfdp = torch.cat([p_grad.flatten() for p_grad in adfdp]).unsqueeze(0)
             adfdp = adfdp.expand(batch_size, -1) / batch_size
         if adfdt is not None:
             adfdt = adfdt.expand(batch_size, 1) / batch_size
@@ -170,8 +172,6 @@ class ODEAdjoint(torch.autograd.Function):
 class NeuralODE(nn.Module):
     def __init__(self, func):
         super(NeuralODE, self).__init__()
-#        super().__init__()
-
         assert isinstance(func, ODEF)
         self.func = func
 
@@ -185,35 +185,24 @@ class NeuralODE(nn.Module):
         
 class LinearODEF(ODEF):
     def __init__(self, W):
-        #super().__init__()
-
         super(LinearODEF, self).__init__()
-        self.register_parameter('W', nn.Parameter(torch.tensor(W)))
-
         self.lin = nn.Linear(2, 2, bias=False)
-        #self.lin.weight = nn.Parameter(W)
+        self.lin.weight = nn.Parameter(W)
 
     def forward(self, x, t):
         return self.lin(x)
     
 class SpiralFunctionExample(LinearODEF):
-    def __init__(self, matrix):
-        matrix = torch.from_numpy(matrix)
-        matrix = matrix.clone().detach()
-        matrix.requires_grad_(True)
-        print(matrix)
-        #super().__init__(torch.tensor(matrix)) 
-        super(SpiralFunctionExample, self).__init__(torch.tensor(matrix)) 
-       
+    def __init__(self):
+        super(SpiralFunctionExample, self).__init__(Tensor(given_matrix))
+ 
 class RandomLinearODEF(LinearODEF):
     def __init__(self):
         super(RandomLinearODEF, self).__init__(torch.randn(2, 2)/2.)
-        #super().__init__(torch.randn(2, 2)/2.)
-
+        
 class TestODEF(ODEF):
     def __init__(self, A, B, x0):
         super(TestODEF, self).__init__()
-        #super().__init__()
         self.A = nn.Linear(2, 2, bias=False)
         self.A.weight = nn.Parameter(A)
         self.B = nn.Linear(2, 2, bias=False)
@@ -228,8 +217,6 @@ class TestODEF(ODEF):
 class NNODEF(ODEF):
     def __init__(self, in_dim, hid_dim, time_invariant=False):
         super(NNODEF, self).__init__()
-
-        #super().__init__()
         self.time_invariant = time_invariant
 
         if time_invariant:
@@ -251,37 +238,23 @@ class NNODEF(ODEF):
     
 def to_np(x):
     return x.detach().cpu().numpy()
-
+    
 def plot_trajectories(obs=None, times=None, trajs=None, save=None, figsize=(16, 8)):
     fig, ax = plt.subplots(figsize=figsize)
     if obs is not None:
         if times is None:
             times = [None] * len(obs)
         for o, t in zip(obs, times):
-            o, t = to_np(o), to_np(t)
+            o, t = o.detach().cpu().numpy(), t.detach().cpu().numpy()
             for b_i in range(o.shape[1]):
                 ax.scatter(o[:, b_i, 0], o[:, b_i, 1], c=t[:, b_i, 0], cmap=cm.plasma)
 
     if trajs is not None: 
         for z in trajs:
-            z = to_np(z)
+            z = z.detach().cpu().numpy()
             ax.plot(z[:, 0, 0], z[:, 0, 1], lw=1.5)
         if save is not None:
-            ax.savefig(save)
-    st.show()
-    
-
-class LinearODEF(ODEF):
-    def __init__(self, W):
-#       super(LinearODEF, self).__init__() 
-      
-        super().__init__()
-        self.lin = nn.Linear(2, 2, bias=False)
-        self.lin.weight = nn.Parameter(W)
-
-    def forward(self, x, t):
-        return self.lin(x) 
-
+            plt.savefig(save)
     
 link = "data/user_try"
 
@@ -316,9 +289,14 @@ def conduct_experiment(ode_true, ode_trained, n_steps, name, plot_freq=10):
         return obs_, ts_
 
     # Train Neural ODE
+    # Define the total number of steps for the progress bar
+    total_steps = n_steps // plot_freq
+
+    # Create a tqdm progress bar
+    progress_bar = st.progress(0)
+    
     optimizer = torch.optim.Adam(ode_trained.parameters(), lr=0.01)
     for i in range(n_steps):
-        print(i)
         obs_, ts_ = create_batch()
 
         z_ = ode_trained(obs_[0], ts_, return_whole_sequence=True)
@@ -330,17 +308,21 @@ def conduct_experiment(ode_true, ode_trained, n_steps, name, plot_freq=10):
 
         if i % plot_freq == 0:
             z_p = ode_trained(z0, times, return_whole_sequence=True)
-            
-            # Plot and save trajectory
-            save_name = f"{link}/{i}.png"
-            plot_trajectories(obs=[obs], times=[times], trajs=[z_p], save=f"link")
-            clear_output(wait=True)
 
-def main(loss_function, matrix, iterations):
-    print(type(matrix))
-    ode_true = NeuralODE(SpiralFunctionExample(matrix))
+            plot_trajectories(obs=[obs], times=[times], trajs=[z_p], save=f"{link}/test_user_{i}.png")
+            clear_output(wait=True)
+            
+            # Update the progress bar
+            progress_bar.progress((i // plot_freq + 1) / total_steps)
+    
+    # Close the progress bar
+    progress_bar.empty()
+          
+def main():
+    ode_true = NeuralODE(SpiralFunctionExample())
     ode_trained = NeuralODE(RandomLinearODEF())
-    conduct_experiment(ode_true, ode_trained, user_it, "linear")
+    st.write(f"Computing NEDO with lossfunction and {iteration.user_it} itérations")
+    conduct_experiment(ode_true, ode_trained, int(iteration.user_it), "linear")
     
 if __name__ == '__main__':
-    main(loss_function, matrix, user_it)
+    main()
