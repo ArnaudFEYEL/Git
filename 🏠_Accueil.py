@@ -18,7 +18,7 @@ st.markdown("""
     - 📕 Rapport du Projet : vous y trouverez le rapport écrit de notre projet de recherche. Disponible en visualisation sur le site et en pdf.
     - 🖼 Diapositives : vous trouverez les diapositives qui accompagnent le Rapport.
     - 🔬 Piste de réflexions : vous y trouverez des tentatives d'approfondissement de notre projets, soulignant les limites et améliorations des modèles
-    - 📝 Notes, Brouillons & Références : vous y trouverez un condencé de notes qui nous ont accompagnées le long de ce projet.
+    - 📝 Notes, Brouillons & Références : vous y trouverez un condensé de notes qui nous ont accompagnées le long de ce projet.
     """)
 
 st.markdown("## Contact")
