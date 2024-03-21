@@ -24,10 +24,12 @@ use_cuda = torch.cuda.is_available()
 given_matrix = torch.load('data/matrix.pth')
 
 import sys
-sys.path.append("data/user_try/iteration.py")
+sys.path.append("data/")
+#sys.path.append("data/iteration.py")
+#print("interation is imported")
 import iteration
 
-sys.path.append("data/user_try/loss_function.py")
+#sys.path.append("data/loss_function.py") 
 import loss_function
     
 def ode_solve(z0, t0, t1, f):
