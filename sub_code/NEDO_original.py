@@ -13,6 +13,7 @@ import matplotlib.cm as cm
 import torch
 from torch import Tensor
 from torch import nn
+import torch.optim as optim
 from torch.nn  import functional as F 
 from torch.autograd import Variable
 import streamlit as st 
@@ -25,6 +26,9 @@ given_matrix = torch.load('data/matrix.pth')
 import sys
 sys.path.append("data/user_try/iteration.py")
 import iteration
+
+sys.path.append("data/user_try/loss_function.py")
+import loss_function
     
 def ode_solve(z0, t0, t1, f):
     """
@@ -296,16 +300,22 @@ def conduct_experiment(ode_true, ode_trained, n_steps, name, plot_freq=10):
     progress_bar = st.progress(0)
     
     optimizer = torch.optim.Adam(ode_trained.parameters(), lr=0.01)
+    
+    # Define a learning rate scheduler
+    #scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True)
+
     for i in range(n_steps):
         obs_, ts_ = create_batch()
 
         z_ = ode_trained(obs_[0], ts_, return_whole_sequence=True)
-        loss = F.mse_loss(z_, obs_.detach())
+        loss = loss_function.user_loss(z_, obs_.detach())
 
         optimizer.zero_grad()
         loss.backward(retain_graph=True)
         optimizer.step()
 
+        #scheduler.step(loss)
+        
         if i % plot_freq == 0:
             z_p = ode_trained(z0, times, return_whole_sequence=True)
 
@@ -319,6 +329,7 @@ def conduct_experiment(ode_true, ode_trained, n_steps, name, plot_freq=10):
     progress_bar.empty()
           
 def main():
+    st.write(loss_function.user_loss)
     ode_true = NeuralODE(SpiralFunctionExample())
     ode_trained = NeuralODE(RandomLinearODEF())
     st.write(f"Computing NEDO with lossfunction and {iteration.user_it} itérations")
