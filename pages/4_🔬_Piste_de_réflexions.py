@@ -226,7 +226,7 @@ et une couche de sortie de dimension 2, sans biais (```nn.Linear(2, 2, bias=Fals
         # Write the integer value as a Python variable assignment
             file.write("import torch\n")
             file.write("from torch.nn import functional as F\n")
-            file.write(f"user_loss = {str(selected_key)}()")
+            file.write(f"user_loss = {str(selected_key)}")
             
         # Prompt the user to enter the number of iterations
         iterations = st.number_input("Enter the number of iterations:", min_value=1, step=1)
