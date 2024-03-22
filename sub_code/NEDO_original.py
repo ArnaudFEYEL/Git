@@ -25,12 +25,9 @@ given_matrix = torch.load('data/matrix.pth')
 
 import sys
 sys.path.append("data/")
-#sys.path.append("data/iteration.py")
-#print("interation is imported")
 import iteration
 
-#sys.path.append("data/loss_function.py") 
-import loss_function
+
     
 def ode_solve(z0, t0, t1, f):
     """
@@ -262,7 +259,7 @@ def plot_trajectories(obs=None, times=None, trajs=None, save=None, figsize=(16, 
         if save is not None:
             plt.savefig(save)
     
-link = "data/user_try"
+link = "data/user_try/NEDO_original"
 
 def conduct_experiment(ode_true, ode_trained, n_steps, name, plot_freq=10):
     # Create data
@@ -310,7 +307,7 @@ def conduct_experiment(ode_true, ode_trained, n_steps, name, plot_freq=10):
         obs_, ts_ = create_batch()
 
         z_ = ode_trained(obs_[0], ts_, return_whole_sequence=True)
-        loss = loss_function.user_loss(z_, obs_.detach())
+        loss = F.mse_loss(z_, obs_.detach())
 
         optimizer.zero_grad()
         loss.backward(retain_graph=True)
@@ -331,7 +328,6 @@ def conduct_experiment(ode_true, ode_trained, n_steps, name, plot_freq=10):
     progress_bar.empty()
           
 def main():
-    st.write(loss_function.user_loss)
     ode_true = NeuralODE(SpiralFunctionExample())
     ode_trained = NeuralODE(RandomLinearODEF())
     st.write(f"Computing NEDO with lossfunction and {iteration.user_it} itérations")

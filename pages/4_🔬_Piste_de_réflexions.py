@@ -10,7 +10,8 @@ import sys
 import torch
 sys.path.append('sub_code/')  # Add the directory containing 'NEDO_user_code.py' to the Python path
 import NEDO_original
-
+import NEDO_GeLU
+import NEDO_Leaky_ReLU
 
 # Set page title and icon
 st.set_page_config(
@@ -28,16 +29,13 @@ page = st.sidebar.radio("Aller à", ["NEDOS", "Latent ODE", "Normalizing Flow"])
 if page == "NEDOS":
     st.markdown("<h1 style='text-align: center; color: white;'>Neural ODEs", unsafe_allow_html=True)
 
-    st.write(r"""En guise de preuve de concept, nous allons maintenant tester si un ODE neuronal peut effectivement restaurer la vraie fonction de dynamique à l'aide de données échantillonnées. Pour ce faire, nous spécifierons un ODE, le ferons évoluer et échantillonnerons des points sur sa trajectoire, puis le restaurerons. 
+    st.write(r"""En guise de preuve pratique, nous allons maintenant tester si un ODE neuronal peut effectivement restaurer la vraie fonction de dynamique à l'aide de données échantillonnées. Pour ce faire, nous spécifierons un ODE, le ferons évoluer et échantillonnerons des points sur sa trajectoire, puis le restaurerons. 
          Tout d'abord, nous testerons un ODE linéaire simple. 
          La dynamique est donnée la matrice ci dessous matrice.
 $$
 \frac{dz}{dt} = \begin{bmatrix}-0.1 & -1.0\\1.0 & -0.1\end{bmatrix} z
 $$
-
-Pour l'implémentation, nous utiliserons un module de réseau de neurones linéaires avec une couche d'entrée de dimension 2 
-et une couche de sortie de dimension 2, sans biais (```nn.Linear(2, 2, bias=False)```).
-         """)
+""")
 
     
     # Function to read PNG files corresponding to each iteration
@@ -51,13 +49,12 @@ et une couche de sortie de dimension 2, sans biais (```nn.Linear(2, 2, bias=Fals
 
     # Graph plot function
     def plot_graph_example():
-        st.title('Evolution de votre résultat')
+        st.title("Evolution du résultat de l'exemple")
 
         # Start button to initiate the animation
         if st.button("Commencer l'animation", key="start_animation"):
             # Select folder containing PNG files
-            folder_path = "data/dim2.1"
-            st.empty()  # Placeholder for the slider
+            folder_path = "data/plot_example"
 
             # Check if folder path is provided
             if folder_path:
@@ -85,10 +82,9 @@ et une couche de sortie de dimension 2, sans biais (```nn.Linear(2, 2, bias=Fals
         st.title('Evolution du résultat')
 
         # Start button to initiate the animation
-        if st.button("Commencer l'animation", key="start_user_animation"):
+        if st.button("Commencer l'animation du code original", key="start_user_animation_orginal"):
             # Select folder containing PNG files
-            folder_path = "data/user_try"
-            st.empty()  # Placeholder for the slider
+            folder_path = "data/user_try/NEDO_original"
 
             # Check if folder path is provided
             if folder_path:
@@ -111,7 +107,59 @@ et une couche de sortie de dimension 2, sans biais (```nn.Linear(2, 2, bias=Fals
                 restart_button = st.button("Recommencer l'animation", key="restart_button")
                 if restart_button:
                     start_progress = True  # Set the flag to start progress again
-                
+        
+        if st.button("Commencer l'animation du code avec GeLU", key="start_user_animation_GeLU"):
+            # Select folder containing PNG files
+            folder_path = "data/user_try/NEDO_GeLU"
+
+            # Check if folder path is provided
+            if folder_path:
+                # Read PNG files from the folder
+                png_files = read_png_files(folder_path)
+
+                # Placeholder for the selected image
+                selected_image_placeholder = st.empty()
+
+                # Progress through the iterations automatically
+                for i in range(len(png_files) * 10):  # Progress through each step of 50 to be faster
+                    time.sleep(0.0000001)  # Adjust the speed of progression
+                    iteration = i // 10 * 10  # Get the current iteration
+
+                    # Display the selected PNG file
+                    selected_png = os.path.join(folder_path, png_files[iteration // 10])
+                    selected_image_placeholder.image(selected_png, use_column_width=True)
+
+                # Button to restart the progress
+                restart_button = st.button("Recommencer l'animation", key="restart_button")
+                if restart_button:
+                    start_progress = True  # Set the flag to start progress again
+        
+        if st.button("Commencer l'animation du code avec Leaky ReLU", key="start_user_animation_Leaky_ReLU"):
+            # Select folder containing PNG files
+            folder_path = "data/user_try/NEDO_Leaky_ReLU"
+
+            # Check if folder path is provided
+            if folder_path:
+                # Read PNG files from the folder
+                png_files = read_png_files(folder_path)
+
+                # Placeholder for the selected image
+                selected_image_placeholder = st.empty()
+
+                # Progress through the iterations automatically
+                for i in range(len(png_files) * 10):  # Progress through each step of 50 to be faster
+                    time.sleep(0.0000001)  # Adjust the speed of progression
+                    iteration = i // 10 * 10  # Get the current iteration
+
+                    # Display the selected PNG file
+                    selected_png = os.path.join(folder_path, png_files[iteration // 10])
+                    selected_image_placeholder.image(selected_png, use_column_width=True)
+
+                # Button to restart the progress
+                restart_button = st.button("Recommencer l'animation", key="restart_button")
+                if restart_button:
+                    start_progress = True  # Set the flag to start progress again                
+    
     def create_matrix():
         st.title("À votre tour !")
         st.write(r"""Essayez de résoudre votre équation différentielle dans $\mathbb{R}^{2}$ avec un NODE. 
@@ -197,57 +245,55 @@ et une couche de sortie de dimension 2, sans biais (```nn.Linear(2, 2, bias=Fals
             st.write("Les valeurs propres de la matrice ne sont pas réelles. ✅")
 
     def choose_parameters():
-        st.write(r""" Le point clef de la méthoden NODE est qu'il repose sur la méthode de l'adjoint pour calculer $\nabla_{\theta}L$. 
-                 Ceci implique donc directement l'utilisation d'une fonction $L$ différentiable, ou au moins dérivable. 
-                 Pour appliquer la méthode NODE, vous avez le choix entre plusieurs fonctions de loss ainsi que le choix du nombre d'itérations.
-                 Nous recommandons au moins 1000 itérations : l'algorithme peut prendre du temps à converger.
-                 """)
-
-        # Define loss function choices with keys
-        loss_function_choices = {
-            "Mean Squared Error (MSE)": "F.mse_loss",
-            "Mean Absolute Error (MAE)": "F.l1_Loss",
-            "Huber Loss (HL)": "F.HuberLoss",
-            "Log-Cosh Loss (LGL)": "log_cosh"
-        }
-
-        # Prompt the user to choose a loss function
-        loss_function_choice = st.selectbox(
-            "Choose a loss function:",
-            options=list(loss_function_choices.keys()),
-            key="loss_function_choice"
-        )
-
-        # Get the key corresponding to the selected loss function
-        selected_key = loss_function_choices[loss_function_choice]
-        
-        # Open a file in write mode
-        with open("data/loss_function.py", "w") as file:
-        # Write the integer value as a Python variable assignment
-            file.write("import torch\n")
-            file.write("from torch.nn import functional as F\n")
-            file.write(f"user_loss = {str(selected_key)}")
+        st.write(r""" Le point clé de la méthode NODE est qu'elle repose sur la méthode de l'adjoint pour calculer $\nabla_{\theta}L$. 
+                 Cela implique donc directement l'utilisation d'une fonction de perte $L$ différentiable, ou au moins dérivable. 
+                 Pour appliquer la méthode NODE, vous avez le choix du nombre d'itérations. 
+                 Nous recommandons au moins 1000 itérations : l'algorithme peut prendre du temps à converger.""")
             
         # Prompt the user to enter the number of iterations
         iterations = st.number_input("Enter the number of iterations:", min_value=1, step=1)
+        
+        # Check if the input is not a multiple of 10
+        if iterations % 10 != 0:
+            # Round up to the nearest number divisible by 10
+            iterations = np.ceil(iterations / 10) * 10
+            st.write(f"Nombre d'itérations ajusté: {int(iterations)}")
         
         # Open a file in write mode
         with open("data/iteration.py", "w") as file:
         # Write the integer value as a Python variable assignment
             file.write(f"user_it = {int(iterations)}")
         
-        # Return the chosen loss function key and number of iterations
-        return selected_key, iterations
+    def Picard_PB():
+        st.write(r"""Le théorème d'existence de Picard stipule que la solution à un problème de valeur initiale existe 
+                et est unique si l'équation différentielle est uniformément continue de Lipschitz en $z$ et continue en $t$. 
+                Ce théorème s'applique à notre modèle si le réseau neuronal a des poids finis et utilise des non-linéarités de Lipschitz, 
+                telles que tanh ou relu.
+                En pratique, le nombre de poids est toujours finis. Mais, une question naturelle est de se demander quel comportement 
+                cette méthode aura pour une fonction d'activation qui n'est pas Lipschitz.
+                """)
     
-    
-    def try_code():
+    def try_code_original():
         # Button to run the code
-        if st.button("Essayer le code soit même", key = "code"):
+        if st.button("Essayer le code soit même", key = "original"):
             
             # Execute the code
              NEDO_original.main()
 
-
+    def try_code_GeLU():
+        # Button to run the code
+        if st.button("Essayer le code soit même avec la fonction d'activation GeLU (Non Lipshitz)", key = "GeLU"):
+            
+            # Execute the code
+             NEDO_GeLU.main()
+             
+    def try_code_Leaky_ReLU():
+        # Button to run the code
+        if st.button("Essayer le code soit même avec la fonction d'activation Leaky ReLU (Non Lipshitz)", key = "Leaky_ReLU"):
+            
+            # Execute the code
+             NEDO_Leaky_ReLU.main()
+             
     def main():
         start_progress = False 
         plot_graph_example()
@@ -255,8 +301,11 @@ et une couche de sortie de dimension 2, sans biais (```nn.Linear(2, 2, bias=Fals
         show_matrix(matrix)
         check_conditions(matrix)
         matrix_to_torch(matrix)
-        loss_function_key, iterations = choose_parameters()
-        try_code()
+        choose_parameters()
+        Picard_PB()
+        try_code_original()
+        try_code_GeLU()
+        try_code_Leaky_ReLU()
         plot_graph_user()
         
     if __name__ == '__main__':
@@ -265,6 +314,7 @@ et une couche de sortie de dimension 2, sans biais (```nn.Linear(2, 2, bias=Fals
 elif page == "Latent ODE":
     #Noor
     st.write("This is the content of Latent 0DE")
+    st.write("test")
     
     
 elif page == "Normalizing Flow":
