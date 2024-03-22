@@ -312,10 +312,58 @@ $$
         main()
 
 elif page == "Latent ODE":
-    #Noor
-    st.write("This is the content of Latent 0DE")
-    st.write("test")
+    # Noor
+    st.markdown("<h1 style='text-align: center; color: white;'>Neural ODEs", unsafe_allow_html=True)
+
+    st.write("""Nous allons maintenant entraîner une EDO latente afin de répliquer la distribution d'un ensemble de données de certains oscillateurs à amplitudes décroissantes.""") 
     
+    st.write("""Les observations sont issues d'une équation de la forme:""")  
+    st.latex(r"""y(t) = e^{At} y_0""")
+
+    st.write(r"""avec $y_0, y(t) \in \mathbb{R}^2$, où $y_0 \sim \mathcal{N}(0,I_{2*2})$""")
+    st.write(r"""$A \in \mathbb{R}^{2 * 2}$ telle que les valeurs propres de $A$ soient complexes avec des composantes réelles négatives.""")
+
+    st.write("""Les échantillons seront de la forme :
+    
+    xx    ooo           ----
+        oo   o        -      -
+      xo      oo     -        -
+      ox            -          -
+        x       o -             --
+     o           o               --   xxxxx                                 ------
+        o    x    -    o               xx -    xx ooooooo               --          -
+           --                      x    --    x       oo              --              ---     
+         - x        o            x        o x -       o            -      xxxxxxxx  oooooo
+        -   x        o          x        o   x  -     o          --    xxx      oxx      o
+       -                       x        o     xx --    oo       -    x        oo   xx
+     --        x        o       x        o        x -      o  --    xx       o     xx
+    -                  o     x        o          x    --  oo    x        o           xxx
+             x         o            o            x       -- o  xx       oo
+              x         o  x       o              xx       xxo     ooo
+               x         ox       o                 xxx  xxx   ooooo
+                x        xo      o                     xx
+                 x     xx  oooooo
+                  xxxxx
+                     
+    """)
+
+    """🔎 Ce qui est vraiment intéressant dans cet exemple est l'échantillonnage de manière irrégulière des données soujacentes.
+        \n ➡️ Nous notons donc des temps d'observation différents pour différents éléments du lot.
+    """
+
+    # Main function
+    def main():
+        st.title("Evolution du résultat")
+
+        # Button to activate the GIF
+        if st.button("Afficher l'évolution"):
+            # Display the GIF only when the button is clicked
+            st.image("latent.gif", use_column_width=True)
+        
+        """On peut clairement voir que la forme des distributions converge vers celle de l'échantillon initial!"""
+
+    if __name__ == "__main__":
+        main()
     
 elif page == "Normalizing Flow":
     #Malek

@@ -1,1 +1,1 @@
-user_it = 650
+user_it = 10
