@@ -12,6 +12,11 @@ sys.path.append('sub_code/')  # Add the directory containing 'NEDO_user_code.py'
 import NEDO_original
 import NEDO_GeLU
 import NEDO_Leaky_ReLU
+import LEDO_original
+import LEDO_1
+import LEDO_2
+import LEDO_3
+import LEDO_4
 
 # Set page title and icon
 st.set_page_config(
@@ -323,7 +328,7 @@ elif page == "Latent ODE":
     st.write(r"""avec $y_0, y(t) \in \mathbb{R}^2$, où $y_0 \sim \mathcal{N}(0,I_{2*2})$""")
     st.write(r"""$A \in \mathbb{R}^{2 * 2}$ telle que les valeurs propres de $A$ soient complexes avec des composantes réelles négatives.""")
 
-    st.write("""Les échantillons seront de la forme :
+    st.write("""Les oscillations seront de la forme :
     
     xx    ooo           ----
         oo   o        -      -
@@ -350,17 +355,188 @@ elif page == "Latent ODE":
     """🔎 Ce qui est vraiment intéressant dans cet exemple est l'échantillonnage de manière irrégulière des données soujacentes.
         \n ➡️ Nous notons donc des temps d'observation différents pour différents éléments du lot.
     """
+    
+    # Function to read PNG files corresponding to each iteration
+    def read_png_files(folder_path):
+        png_files = sorted([f for f in os.listdir(folder_path) if f.endswith('.png')], key=sort_key)
+        return png_files
 
-    # Main function
-    def main():
-        st.title("Evolution du résultat")
+    # Custom sorting function to sort filenames based on their numeric part
+    def sort_key(filename):
+        return int(re.search(r'\d+', filename).group())
 
-        # Button to activate the GIF
-        if st.button("Afficher l'évolution"):
-            # Display the GIF only when the button is clicked
-            st.image("latent.gif", use_column_width=True)
+    # Graph plot function
+    def plot_graph_example():
+        st.title("Evolution du résultat de l'exemple")
+        st.write(r""" Regardons les résultats dans le cadre d'un exemple avec une matrice
+            $$ 
+            A =
+            \begin{bmatrix}
+            -0.1 & 1.3 \\
+            -1 & -0.1
+            \end{bmatrix}
+            $$
+            """)
+        # Start button to initiate the animation
+        if st.button("Commencer l'animation", key="start_animation"):
+            # Select folder containing PNG files
+            folder_path = "data/user_try/LEDO_original"
+
+            # Check if folder path is provided
+            if folder_path:
+                # Read PNG files from the folder
+                png_files = read_png_files(folder_path)
+
+                # Placeholder for the selected image
+                selected_image_placeholder = st.empty()
+
+                # Progress through the iterations automatically
+                for i in range(len(png_files)):  # Progress through each step of 10
+                    time.sleep(0.07)  # Adjust the speed of progression
+
+                    # Display the selected PNG file
+                    if i < len(png_files):
+                        selected_png = os.path.join(folder_path, png_files[i])
+                        selected_image_placeholder.image(selected_png, use_column_width=True)
+            
+            # Create another st.empty() element for the restart button
+            restart_button_placeholder = st.empty()
+    
+            # Button to restart the progress
+            restart_button = st.button("Recommencer l'animation", key="restart_button")
+            if restart_button:
+                start_progress = True  # Set the flag to start progress again
+        """On obtient bien la forme voulue!"""
+
+    def plot_solution(A):
+        # Generate random initial condition y_0 ~ N(0, I)
+        y_0 = np.random.multivariate_normal(mean=[0, 0], cov=np.eye(2))
+    
+        # Define time points for plotting
+        t = np.sort(np.random.uniform(0, 3, 250))  # Select 250 random points in [0, 3]
+    
+        # Compute y(t) = exp(At) * y_0
+        y_t = np.dot(np.exp(A * t[:, None, None]), y_0)
+    
+        # Plot the solution
+        fig, ax = plt.subplots(figsize=(8, 6))
+        plt.plot(t, y_t[:, 0], label='y_1(t)')
+        plt.plot(t, y_t[:, 1], label='y_2(t)')
+        plt.title('Distribution de y(t)')
+        plt.xlabel('Temps (t)')
+        plt.ylabel('y(t)')
+        plt.legend()
+        plt.grid(True)
+        st.pyplot(fig)
+
+
+    def Matrix_choices():
+        st.write(r"Choisir la matrice $A$:")
+
+        option = st.selectbox(
+            "Select an option:",
+            ("Matrice 1", "Matrice 2", "Matrice 3", "Matrice 4")
+        )
+
+        if option == "Matrice 1":
+            A = np.array([[-1, 0], [0, -1]])
+            st.write(r"""
+            $$ 
+            A =
+            \begin{bmatrix}
+            -1 & 0 \\
+            0 & -1
+            \end{bmatrix}
+            $$
+            """)
+            plot_solution(A)
+        elif option == "Matrice 2":
+            A = np.array([[-2, 0], [0, -3]])
+            st.write(r"""
+            $$ 
+            A =
+            \begin{bmatrix}
+            -2 & 0 \\
+            0 & -3
+            \end{bmatrix}
+            $$
+            """)
+            plot_solution(A)
+        elif option == "Matrice 3":
+            A = np.array([[-2, 1], [-1, -2]])            
+            st.write(r"""
+            $$ 
+            A =
+            \begin{bmatrix}
+            -2 & 1 \\
+            -1 & -2
+            \end{bmatrix}
+            $$
+            """)
+            plot_solution(A)
+        elif option == "Matrice 4":
+            A = np.array([[-1, 2], [-1, -1]])            
+            st.write(r"""
+            $$ 
+            A =
+            \begin{bmatrix}
+            -1 & 2 \\
+            -1 & -1
+            \end{bmatrix}
+            $$
+            """)
+            plot_solution(A)
         
-        """On peut clairement voir que la forme des distributions converge vers celle de l'échantillon initial!"""
+        return option
+    
+
+    def plot_graph_user(option):
+        st.title('Evolution du résultat')
+
+        # Start button to initiate the animation
+        if st.button("Commencer l'animation du code avec la matrice choisie", key="start_user_animation_orginal"):
+
+            # Select folder containing PNG files
+            if option == "Matrice 1":
+                folder_path = "data/user_try/latent_plots_1"
+            elif option == "Matrice 2":
+                folder_path = "data/user_try/latent_plots_2"
+            elif option == "Matrice 3":
+                folder_path = "data/user_try/latent_plots_3"
+            elif option == "Matrice 4":
+                folder_path = "data/user_try/latent_plots_4"
+
+            # Check if folder path is provided
+            if folder_path:
+                # Read PNG files from the folder
+                png_files = read_png_files(folder_path)
+
+                # Placeholder for the selected image
+                selected_image_placeholder = st.empty()
+
+                # Progress through the iterations automatically
+                for i in range(len(png_files)):  # Progress through each step of 10
+                    time.sleep(0.07)  # Adjust the speed of progression
+
+                    # Display the selected PNG file
+                    if i < len(png_files):
+                        selected_png = os.path.join(folder_path, png_files[i])
+                        selected_image_placeholder.image(selected_png, use_column_width=True)
+            
+            # Create another st.empty() element for the restart button
+            restart_button_placeholder = st.empty()
+    
+            # Button to restart the progress
+            restart_button = st.button("Recommencer l'animation", key="restart_button")
+            if restart_button:
+                start_progress = True  # Set the flag to start progress again
+        """On obtient bien la forme voulue!"""       
+    def main():
+        plot_graph_example()
+        st.title("À votre tour !")
+        option = Matrix_choices()
+        plot_graph_user(option)
+    
 
     if __name__ == "__main__":
         main()
