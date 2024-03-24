@@ -212,9 +212,8 @@ class TestODEF(ODEF):
 
     def forward(self, x, t):
         xTx0 = torch.sum(x*self.x0, dim=1)
-        dxdt = torch.leaky_relu(xTx0, negative_slope=0.01) * self.A(x - self.x0) 
-        + torch.leaky_relu(-xTx0, negative_slope=0.01) * self.B(x + self.x0)
-       
+        dxdt = torch.sigmoid(xTx0) * self.A(x - self.x0) + torch.sigmoid(-xTx0) * self.B(x + self.x0)
+
         return dxdt
     
 class NNODEF(ODEF):
@@ -228,14 +227,14 @@ class NNODEF(ODEF):
             self.lin1 = nn.Linear(in_dim+1, hid_dim)
         self.lin2 = nn.Linear(hid_dim, hid_dim)
         self.lin3 = nn.Linear(hid_dim, in_dim)
-        self.gelu = torch.nn.leaky_relu(approximate='none', inplace=True)
+        self.LRelu = torch.nn.leaky_relu(approximate='none', inplace=True)
 
     def forward(self, x, t):
         if not self.time_invariant:
             x = torch.cat((x, t), dim=-1)
 
-        h = self.gelu(self.lin1(x))
-        h = self.gelu(self.lin2(h))
+        h = self.LRelu(self.lin1(x))
+        h = self.LRelu(self.lin2(h))
         out = self.lin3(h)
         return out
     
@@ -327,11 +326,14 @@ def conduct_experiment(ode_true, ode_trained, n_steps, name, plot_freq=10):
     # Close the progress bar
     progress_bar.empty()
           
-def main():
-    ode_true = NeuralODE(SpiralFunctionExample())
-    ode_trained = NeuralODE(RandomLinearODEF())
-    st.write(f"Computing NEDO with GeLU lossfunction and {iteration.user_it} itérations")
-    conduct_experiment(ode_true, ode_trained, int(iteration.user_it), "linear")
-    
+class MyMain1:
+    def __init__(self):
+        self.ode_true = NeuralODE(SpiralFunctionExample())
+        self.ode_trained = NeuralODE(RandomLinearODEF())
+        
+    def run(self):
+        st.write(f"Computing NEDO with lossfunction and {iteration.user_it} itérations")
+        conduct_experiment(self.ode_true, self.ode_trained, int(iteration.user_it), "linear")
+                     
 if __name__ == '__main__':
-    main()
+    MyMain1().run()

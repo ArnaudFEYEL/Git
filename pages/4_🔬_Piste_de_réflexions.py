@@ -12,11 +12,16 @@ sys.path.append('sub_code/')  # Add the directory containing 'NEDO_user_code.py'
 import NEDO_original
 import NEDO_GeLU
 import NEDO_Leaky_ReLU
-import LEDO_original
-import LEDO_1
-import LEDO_2
-import LEDO_3
-import LEDO_4
+
+#import LEDO_original
+#import LEDO_1
+#import LEDO_2
+#import LEDO_3
+#import LEDO_4
+
+
+#tester larchitecture de JAX et sinon dire d'utliser autre chiose 
+
 
 # Set page title and icon
 st.set_page_config(
@@ -228,12 +233,12 @@ $$
         st.write("Il est commode de vérifier les conditions de stabilité de la matrice en input pour un meilleur résultat numérique.")
         # Stability: Check if real parts of eigenvalues are negative
         eigenvalues, _ = np.linalg.eig(A)
-        is_stable = np.all(np.real(eigenvalues) <= 0)
+        is_stable = np.all(np.real(eigenvalues) < 0)
         
         if is_stable:
-            st.write("Les parties réelles des valeurs propres sont négatives. ✅")
+            st.write("Les parties réelles des valeurs propres sont négatives et non nulles. ✅")
         else:
-            st.write(f"Les parties réelles des valeurs propres ({eigenvalues}) sont positives. ❌")
+            st.write(f"Les parties réelles des valeurs propres ({eigenvalues}) sont positives ou nulles. ❌")
 
         # Non-degeneracy: Check if matrix is non-singular
         is_nonsingular = np.linalg.det(A) != 0
@@ -274,27 +279,27 @@ $$
                 et est unique si l'équation différentielle est uniformément continue de Lipschitz en $z$ et continue en $t$. 
                 Ce théorème s'applique à notre modèle si le réseau neuronal a des poids finis et utilise des non-linéarités de Lipschitz, 
                 telles que tanh ou relu.
-                En pratique, le nombre de poids est toujours finis. Mais, une question naturelle est de se demander quel comportement 
-                cette méthode aura pour une fonction d'activation qui n'est pas Lipschitz.
+                En pratique, le nombre de poids est toujours finis et la plupart des fonctions d'activations sont Lipschitz et non linéaires.  
+                Alors, on peut se demander si le choix de telles fonctions impacte la convergence du réseaux vers la solution..
                 """)
     
     def try_code_original():
         # Button to run the code
-        if st.button("Essayer le code soit même", key = "original"):
+        if st.button("Essayer le code soit même ", key = "original"):
             
             # Execute the code
              NEDO_original.main()
 
     def try_code_GeLU():
         # Button to run the code
-        if st.button("Essayer le code soit même avec la fonction d'activation GeLU (Non Lipshitz)", key = "GeLU"):
+        if st.button("Essayer le code soit même avec la fonction d'activation GeLU (Lipshitz)", key = "GeLU"):
             
             # Execute the code
              NEDO_GeLU.main()
              
     def try_code_Leaky_ReLU():
         # Button to run the code
-        if st.button("Essayer le code soit même avec la fonction d'activation Leaky ReLU (Non Lipshitz)", key = "Leaky_ReLU"):
+        if st.button("Essayer le code soit même avec la fonction d'activation Leaky ReLU (Lipshitz)", key = "Leaky_ReLU"):
             
             # Execute the code
              NEDO_Leaky_ReLU.main()
