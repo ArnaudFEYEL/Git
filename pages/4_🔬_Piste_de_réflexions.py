@@ -8,16 +8,18 @@ import subprocess
 import matplotlib.pyplot as plt
 import sys
 import torch
-sys.path.append('sub_code/')  # Add the directory containing 'NEDO_user_code.py' to the Python path
+sys.path.append('sub_code/')  
 import NEDO_original
 import NEDO_GeLU
 import NEDO_Leaky_ReLU
 
-#import LEDO_original
-#import LEDO_1
-#import LEDO_2
-#import LEDO_3
-#import LEDO_4
+import base64
+
+import LEDO_original
+import LEDO_1
+import LEDO_2
+import LEDO_3
+import LEDO_4
 
 
 #tester larchitecture de JAX et sinon dire d'utliser autre chiose 
@@ -39,7 +41,7 @@ page = st.sidebar.radio("Aller à", ["NEDOS", "Latent ODE", "Normalizing Flow"])
 if page == "NEDOS":
     st.markdown("<h1 style='text-align: center; color: white;'>Neural ODEs", unsafe_allow_html=True)
 
-    st.write(r"""En guise de preuve pratique, nous allons maintenant tester si un ODE neuronal peut effectivement restaurer la vraie fonction de dynamique à l'aide de données échantillonnées. Pour ce faire, nous spécifierons un ODE, le ferons évoluer et échantillonnerons des points sur sa trajectoire, puis le restaurerons. 
+    st.write(r"""En guise de preuve pratique, nous allons maintenant tester si un NODE peut effectivement restaurer la vraie fonction de dynamique à l'aide de données échantillonnées. Pour ce faire, nous spécifierons un ODE, le ferons évoluer et échantillonnerons des points sur sa trajectoire, puis le restaurerons. 
          Tout d'abord, nous testerons un ODE linéaire simple. 
          La dynamique est donnée la matrice ci dessous matrice.
 $$
@@ -333,29 +335,6 @@ elif page == "Latent ODE":
     st.write(r"""avec $y_0, y(t) \in \mathbb{R}^2$, où $y_0 \sim \mathcal{N}(0,I_{2*2})$""")
     st.write(r"""$A \in \mathbb{R}^{2 * 2}$ telle que les valeurs propres de $A$ soient complexes avec des composantes réelles négatives.""")
 
-    st.write("""Les oscillations seront de la forme :
-    
-    xx    ooo           ----
-        oo   o        -      -
-      xo      oo     -        -
-      ox            -          -
-        x       o -             --
-     o           o               --   xxxxx                                 ------
-        o    x    -    o               xx -    xx ooooooo               --          -
-           --                      x    --    x       oo              --              ---     
-         - x        o            x        o x -       o            -      xxxxxxxx  oooooo
-        -   x        o          x        o   x  -     o          --    xxx      oxx      o
-       -                       x        o     xx --    oo       -    x        oo   xx
-     --        x        o       x        o        x -      o  --    xx       o     xx
-    -                  o     x        o          x    --  oo    x        o           xxx
-             x         o            o            x       -- o  xx       oo
-              x         o  x       o              xx       xxo     ooo
-               x         ox       o                 xxx  xxx   ooooo
-                x        xo      o                     xx
-                 x     xx  oooooo
-                  xxxxx
-                     
-    """)
 
     """🔎 Ce qui est vraiment intéressant dans cet exemple est l'échantillonnage de manière irrégulière des données soujacentes.
         \n ➡️ Nous notons donc des temps d'observation différents pour différents éléments du lot.
@@ -536,6 +515,7 @@ elif page == "Latent ODE":
             if restart_button:
                 start_progress = True  # Set the flag to start progress again
         """On obtient bien la forme voulue!"""       
+    
     def main():
         plot_graph_example()
         st.title("À votre tour !")
@@ -552,3 +532,37 @@ elif page == "Normalizing Flow":
     st.write("This is the content of Normalizing Flow")
 
     st.write("Nous allons étudier de code")
+    st.write(r"""Ce code permet de visualiser l'évolution de la distribution du Continuous Normalizing Flows de t = 0 à t = T,
+             en prenant en entrée une image (dans notre exemple c'est le logo de GitHub). L'image est transformée en une représentation en 2D,
+                puis cette représentation est utilisée pour entraîner le modèle CNF à apprendre la distribution de probabilité des données sous-jacentes.
+                """)
+        
+    # Pré-requis
+    st.write("Installer `torchdiffeq` de https://github.com/rtqichen/torchdiffeq.")
+    # Visualisation des résultats
+    st.write("Afin de visualiser les résulats, nous exécutons le code ci-dessous.")
+    
+    st.write("python train_img2d.py --img imgs/github.png --save github_flow")
+
+    st.write(r"""L'exécution de ce code dure environ 1h30. Il retourne les informations de suivi de l'entraînement du modèle CNF à chaque itération.
+    Le nombre d'itérations de l'entraînement est 10000. La moyenne cumulative de toutes les pertes est environ 3.47.
+    Le temps moyen pris par le modèle pour évaluer une seule étape dans le CNF est 0.5000""")
+
+    file_ = open("./sub_code/cnf/assets/github_flow.gif", "rb")
+    contents = file_.read()
+    data_url = base64.b64encode(contents).decode("utf-8")
+    file_.close()
+    st.image(data_url, use_column_width=True)
+
+    ## Explication du processus 
+    ### Prétraitement de l'image
+    st.write(r"""L'image est chargée et prétraitée pour être utilisée comme données d'entraînement pour le modèle CNF. 
+    Dans ce script, l'image est transformée en une représentation en 2D qui peut être interprétée comme des coordonnées dans un espace bidimensionnel. """)
+    ### Construction du Modèle CNF
+    st.write(r"""Le script construit le modèle CNF en fonction des arguments fournis, tels que la configuration des couches, le nombre de blocs CNF, etc. Le modèle CNF apprendra à modéliser la distribution de probabilité sous-jacente des données d'entraînement.""")
+    ### Entraînement du Modèle
+    st.write(r"""Le modèle CNF est entraîné sur les données d'entraînement. Pendant l'entraînement, le modèle ajuste ses paramètres pour minimiser la différence entre la distribution de probabilité qu'il apprend et la distribution des données réelles.""")
+    ### Évaluation et Visualisation
+    st.write(r"""À intervalles réguliers, le modèle est évalué sur un ensemble de validation pour surveiller ses performances. De plus, des visualisations sont effectuées pour observer comment le modèle transforme les données au fil du temps.""")
+    ### Sauvegarde du Modèle
+    st.write(r"""Une fois l'entraînement terminé, le meilleur modèle est sauvegardé pour une utilisation ultérieure.""")
