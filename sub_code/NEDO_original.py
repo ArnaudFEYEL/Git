@@ -17,6 +17,7 @@ import torch.optim as optim
 from torch.nn  import functional as F 
 from torch.autograd import Variable
 import streamlit as st 
+import iteration
 
 use_cuda = torch.cuda.is_available()
 
@@ -32,7 +33,16 @@ import iteration
 def ode_solve(z0, t0, t1, f):
     """
     Simplest Euler ODE initial value solver
+    Parameters:
+    - z0: Initial condition
+    - t0: Initial time
+    - t1: Final time
+    - f: Function defining the ODE (z' = f(z, t))
+    
+    Returns:
+    - z: Solution of the ODE at time t1
     """
+    
     h_max = 0.05
     n_steps = math.ceil((abs(t1 - t0)/h_max).max().item())
 
@@ -46,8 +56,26 @@ def ode_solve(z0, t0, t1, f):
     return z
 
 class ODEF(nn.Module):
+    """
+    Ordinary Differential Equation Function (ODEF) module.
+    """
+    
     def forward_with_grad(self, z, t, grad_outputs):
-        """Compute f and a df/dz, a df/dp, a df/dt"""
+        """
+        Compute f and its gradients w.r.t. z, t, and parameters.
+        
+        Parameters:
+        - z: Input tensor
+        - t: Time tensor
+        - grad_outputs: Gradients w.r.t. the output
+        
+        Returns:
+        - out: Output of the forward pass
+        - adfdz: Gradient of f w.r.t. z
+        - adfdt: Gradient of f w.r.t. t
+        - adfdp: Gradients of f w.r.t. parameters
+        """
+        
         batch_size = z.shape[0]
 
         out = self.forward(z, t)
@@ -66,6 +94,13 @@ class ODEF(nn.Module):
         return out, adfdz, adfdt, adfdp
 
     def flatten_parameters(self):
+        """
+        Flatten and concatenate all parameters of the module.
+        
+        Returns:
+        - flat_parameters: Flattened parameters
+        """
+        
         p_shapes = []
         flat_parameters = []
         for p in self.parameters():
@@ -74,8 +109,27 @@ class ODEF(nn.Module):
         return torch.cat(flat_parameters)
     
 class ODEAdjoint(torch.autograd.Function):
+    """
+    Backward pass for Ordinary Differential Equation (ODE) solver using adjoint method.
+    """
+    
     @staticmethod
     def forward(ctx, z0, t, flat_parameters, func):
+        
+        """
+        Forward pass to solve the ODE and save necessary tensors for the backward pass.
+        
+        Parameters:
+        - ctx: Context to save tensors for backward pass
+        - z0: Initial state tensor
+        - t: Time tensor
+        - flat_parameters: Flattened parameters tensor
+        - func: ODEF instance
+        
+        Returns:
+        - z: Solution tensor
+        """
+        
         assert isinstance(func, ODEF)
         bs, *z_shape = z0.size()
         time_len = t.size(0)
@@ -94,8 +148,16 @@ class ODEAdjoint(torch.autograd.Function):
     @staticmethod
     def backward(ctx, dLdz):
         """
-        dLdz shape: time_len, batch_size, *z_shape
+        Backward pass to compute gradients using adjoint method.
+        
+        Parameters:
+        - ctx: Context to retrieve saved tensors
+        - dLdz: Gradient of loss with respect to z
+        
+        Returns:
+        - Gradients w.r.t. z, t, parameters, and None
         """
+        
         func = ctx.func
         t, z, flat_parameters = ctx.saved_tensors
         time_len, bs, *z_shape = z.size()
@@ -105,9 +167,14 @@ class ODEAdjoint(torch.autograd.Function):
         # Dynamics of augmented system to be calculated backwards in time
         def augmented_dynamics(aug_z_i, t_i):
             """
-            tensors here are temporal slices
-            t_i - is tensor with size: bs, 1
-            aug_z_i - is tensor with size: bs, n_dim*2 + n_params + 1
+            Dynamics of augmented system to be calculated backwards in time.
+            
+            Parameters:
+            - aug_z_i: Augmented state at time t_i
+            - t_i: Time tensor
+            
+            Returns:
+            - Augmented dynamics
             """
             z_i, a = aug_z_i[:, :n_dim], aug_z_i[:, n_dim:2*n_dim]  # ignore parameters and time
 
@@ -173,12 +240,33 @@ class ODEAdjoint(torch.autograd.Function):
         return adj_z.view(bs, *z_shape), adj_t, adj_p, None
 
 class NeuralODE(nn.Module):
+    """
+    Neural Ordinary Differential Equation (NeuralODE) module.
+    """
+    
     def __init__(self, func):
+        """
+        Initialize NeuralODE module.
+
+        Parameters:
+        - func: ODEF instance
+        """
         super(NeuralODE, self).__init__()
         assert isinstance(func, ODEF)
         self.func = func
 
     def forward(self, z0, t=Tensor([0., 1.]), return_whole_sequence=False):
+        """
+        Forward pass through the NeuralODE.
+
+        Parameters:
+        - z0: Initial state tensor
+        - t: Time tensor (default: [0., 1.])
+        - return_whole_sequence: Whether to return the whole sequence or just the final state
+
+        Returns:
+        - z or z[-1]: Sequence of states or the final state
+        """
         t = t.to(z0)
         z = ODEAdjoint.apply(z0, t, self.func.flatten_parameters(), self.func)
         if return_whole_sequence:
@@ -187,24 +275,70 @@ class NeuralODE(nn.Module):
             return z[-1]
         
 class LinearODEF(ODEF):
+    """
+    Linear Ordinary Differential Equation Function (LinearODEF) module.
+    Inherits from ODEF.
+    """
     def __init__(self, W):
+        """
+        Initialize LinearODEF module.
+
+        Parameters:
+        - W: Weight matrix for the linear layer
+        """
         super(LinearODEF, self).__init__()
         self.lin = nn.Linear(2, 2, bias=False)
         self.lin.weight = nn.Parameter(W)
 
     def forward(self, x, t):
+        """
+        Forward pass through the LinearODEF.
+
+        Parameters:
+        - x: Input tensor
+        - t: Time tensor
+
+        Returns:
+        - Output of the linear transformation
+        """
         return self.lin(x)
     
 class SpiralFunctionExample(LinearODEF):
+    """
+    Example class for a Spiral Function.
+    Inherits from LinearODEF.
+    """
     def __init__(self):
+        """
+        Initialize SpiralFunctionExample.
+        """
         super(SpiralFunctionExample, self).__init__(Tensor(given_matrix))
  
 class RandomLinearODEF(LinearODEF):
+    """
+    Class for a random LinearODEF.
+    Inherits from LinearODEF.
+    """
     def __init__(self):
+        """
+        Initialize RandomLinearODEF with a random weight matrix.
+        """
         super(RandomLinearODEF, self).__init__(torch.randn(2, 2)/2.)
         
 class TestODEF(ODEF):
+    """
+    Test class for a custom ODE function.
+    Inherits from ODEF.
+    """
     def __init__(self, A, B, x0):
+        """
+        Initialize TestODEF with provided matrices and initial value.
+
+        Parameters:
+        - A: Weight matrix for the A linear layer
+        - B: Weight matrix for the B linear layer
+        - x0: Initial value
+        """
         super(TestODEF, self).__init__()
         self.A = nn.Linear(2, 2, bias=False)
         self.A.weight = nn.Parameter(A)
@@ -213,12 +347,34 @@ class TestODEF(ODEF):
         self.x0 = nn.Parameter(x0)
 
     def forward(self, x, t):
+        """
+        Forward pass through the TestODEF.
+
+        Parameters:
+        - x: Input tensor
+        - t: Time tensor
+
+        Returns:
+        - Output of the differential equation
+        """
         xTx0 = torch.sum(x*self.x0, dim=1)
         dxdt = torch.sigmoid(xTx0) * self.A(x - self.x0) + torch.sigmoid(-xTx0) * self.B(x + self.x0)
         return dxdt
     
 class NNODEF(ODEF):
+    """
+    Neural Network Ordinary Differential Equation Function.
+    Inherits from ODEF.
+    """
     def __init__(self, in_dim, hid_dim, time_invariant=False):
+        """
+        Initialize NNODEF.
+
+        Parameters:
+        - in_dim: Input dimension
+        - hid_dim: Hidden dimension
+        - time_invariant: Flag for time invariance
+        """
         super(NNODEF, self).__init__()
         self.time_invariant = time_invariant
 
@@ -231,6 +387,16 @@ class NNODEF(ODEF):
         self.elu = nn.ELU(inplace=True)
 
     def forward(self, x, t):
+        """
+        Forward pass through NNODEF.
+
+        Parameters:
+        - x: Input tensor
+        - t: Time tensor
+
+        Returns:
+        - Output tensor
+        """
         if not self.time_invariant:
             x = torch.cat((x, t), dim=-1)
 
@@ -240,9 +406,28 @@ class NNODEF(ODEF):
         return out
     
 def to_np(x):
+    """
+    Convert tensor to numpy array.
+
+    Parameters:
+    - x: Input tensor
+
+    Returns:
+    - Numpy array
+    """
     return x.detach().cpu().numpy()
     
 def plot_trajectories(obs=None, times=None, trajs=None, save=None, figsize=(16, 8)):
+    """
+    Plot trajectories.
+
+    Parameters:
+    - obs: Observations
+    - times: Time values
+    - trajs: Trajectories
+    - save: Path to save the plot
+    - figsize: Figure size
+    """
     fig, ax = plt.subplots(figsize=figsize)
     if obs is not None:
         if times is None:
@@ -262,7 +447,16 @@ def plot_trajectories(obs=None, times=None, trajs=None, save=None, figsize=(16, 
 link = "data/user_try/NEDO_original"
 
 def conduct_experiment(ode_true, ode_trained, n_steps, name, plot_freq=10):
-    # Create data
+    """
+    Conduct the experiment.
+
+    Parameters:
+    - ode_true: True ODE
+    - ode_trained: Trained ODE
+    - n_steps: Number of steps
+    - name: Name of the experiment
+    - plot_freq: Frequency of plotting
+    """
     z0 = Variable(torch.Tensor([[0.6, 0.3]]))
 
     t_max = 6.29*5
@@ -328,11 +522,20 @@ def conduct_experiment(ode_true, ode_trained, n_steps, name, plot_freq=10):
     progress_bar.empty()
         
 class MyMain1:
+    """
+    Main class to run the experiment.
+    """
     def __init__(self):
+        """
+        Initialize Neural ODEs for the experiment.
+        """
         self.ode_true = NeuralODE(SpiralFunctionExample())
         self.ode_trained = NeuralODE(RandomLinearODEF())
         
     def run(self):
+        """
+        Run the experiment.
+        """
         st.write(f"Computing NEDO with lossfunction and {iteration.user_it} itérations")
         conduct_experiment(self.ode_true, self.ode_trained, int(iteration.user_it), "linear")
                      
