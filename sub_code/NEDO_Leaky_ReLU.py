@@ -521,25 +521,12 @@ def conduct_experiment(ode_true, ode_trained, n_steps, name, plot_freq=10):
     # Close the progress bar
     progress_bar.empty()
         
-class MyMain1:
-    """
-    Main class to run the experiment.
-    """
-    def __init__(self):
-        """
-        Initialize Neural ODEs for the experiment.
-        """
-        self.ode_true = NeuralODE(SpiralFunctionExample())
-        self.ode_trained = NeuralODE(RandomLinearODEF())
-        
-    def run(self):
-        """
-        Run the experiment.
-        """
-        st.write(f"Computing NEDO with lossfunction and {iteration.user_it} itérations")
-        conduct_experiment(self.ode_true, self.ode_trained, int(iteration.user_it), "linear")
-                     
+def main():
+    ode_true = NeuralODE(SpiralFunctionExample())
+    ode_trained = NeuralODE(RandomLinearODEF())
+    conduct_experiment(ode_true, ode_trained, int(iteration.user_it), "linear")
+    
 if __name__ == '__main__':
-    MyMain1().run()
+    main()
     
     
