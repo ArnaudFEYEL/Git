@@ -11,7 +11,10 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import optax
+import streamlit as st
+import sys
 
+sys.path.append('data/')  
 
 matplotlib.rcParams.update({"font.size": 30})
 
@@ -160,7 +163,7 @@ def main(
     dataset_size=10000,
     batch_size=256,
     lr=1e-2,
-    steps=250,
+    steps=500,
     save_every=50,
     hidden_size=16,
     latent_size=16,
@@ -168,6 +171,8 @@ def main(
     depth=2,
     seed=5678,
 ):
+    progress_bar = st.progress(0)  # Initialize Streamlit progress bar
+    
     key = jr.PRNGKey(seed)
     data_key, model_key, loader_key, train_key, sample_key = jr.split(key, 5)
 
@@ -202,7 +207,7 @@ def main(
     
     # Create folder for saving plots
     os.makedirs("latent_plots", exist_ok=True)
-
+    
     # Plot results
     num_plots = 1 + (steps - 1) // save_every
     if ((steps - 1) % save_every) != 0:
@@ -210,36 +215,44 @@ def main(
     fig, axs = plt.subplots(1, num_plots, figsize=(num_plots * 8, 8))
     axs[0].set_ylabel("x")
     axs = iter(axs)
-    for step, (ts_i, ys_i) in zip(
-        range(steps), dataloader((ts, ys), batch_size, key=loader_key)
-    ):
-        start = time.time()
-        value, model, opt_state, train_key = make_step(
-            model, opt_state, ts_i, ys_i, train_key
-        )
-        end = time.time()
-        print(f"Step: {step}, Loss: {value}, Computation time: {end - start}")
-
-        # Create a new figure for each plot
-        fig, ax = plt.subplots(figsize=(8, 8))
-        ax.set_ylabel("x")
-        ax.set_xlabel("t")
-
-        # Sample over a longer time interval than we trained on. The model will be
-        # sufficiently good that it will correctly extrapolate!
-        sample_t = jnp.linspace(0, 12, 300)
-        sample_y = model.sample(sample_t, key=sample_key)
-        sample_t = np.asarray(sample_t)
-        sample_y = np.asarray(sample_y)
-        ax.plot(sample_t, sample_y[:, 0], label='x1')
-        ax.plot(sample_t, sample_y[:, 1], label='x2')
-        ax.legend()
-
-        
-        # Save plot in the "latent_plots" folder
-        plt.savefig(os.path.join("latent_plots", f"latent_ode_{step}.png"))
-        plt.close()
     
+    for step in range(steps):
+            ts_i, ys_i = next(dataloader((ts, ys), batch_size, key=loader_key))
+            
+            start = time.time()
+            value, model, opt_state, train_key = make_step(
+                model, opt_state, ts_i, ys_i, train_key
+            )
+            end = time.time()
+            print(f"Step: {step}, Loss: {value}, Computation time: {end - start}")
+        
+            # Update Streamlit progress bar
+            if step + 1 > steps:
+                progress_bar.progress(1.0)  # Set progress to 100% if step exceeds total steps
+            else:
+                progress_bar.progress((step + 1) / steps)
+            
+            # Create a new figure for each plot
+            fig, ax = plt.subplots(figsize=(8, 8))
+            ax.set_ylabel("x")
+            ax.set_xlabel("t")
+
+            # Sample over a longer time interval than we trained on. The model will be
+            # sufficiently good that it will correctly extrapolate!
+            sample_t = jnp.linspace(0, 12, 300)
+            sample_y = model.sample(sample_t, key=sample_key)
+            sample_t = np.asarray(sample_t)
+            sample_y = np.asarray(sample_y)
+            ax.plot(sample_t, sample_y[:, 0], label='x1')
+            ax.plot(sample_t, sample_y[:, 1], label='x2')
+            ax.legend()
+
+            # Save plot in the "latent_plots" folder
+            plt.savefig(os.path.join("data/user_try/latent_plots_2", f"latent_ode_{step}.png"))
+            plt.close()
+        
+    st.success('Training complete!')  # Display success message when training is complete
 
 
-main()
+if __name__ == '__main__':
+    main()

@@ -22,9 +22,6 @@ import LEDO_3
 import LEDO_4
 
 
-#tester larchitecture de JAX et sinon dire d'utliser autre chiose 
-
-
 # Set page title and icon
 st.set_page_config(
     page_title="Piste de réflexions",
@@ -306,6 +303,9 @@ $$
             # Execute the code
              NEDO_Leaky_ReLU.main()
              
+    def NB():
+        st.write("Note : La condition initiale de chaque algorithme est attribuée aléatoirement. N'hésitez pas à les relancer si elles n'ont pas eu le temps de converger pour le nombre d'itérations donné.")
+        
     def main():
         start_progress = False 
         plot_graph_example()
@@ -319,13 +319,14 @@ $$
         try_code_GeLU()
         try_code_Leaky_ReLU()
         plot_graph_user()
+        NB()
         
     if __name__ == '__main__':
         main()
 
 elif page == "Latent ODE":
     # Noor
-    st.markdown("<h1 style='text-align: center; color: white;'>Neural ODEs", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; color: white;'>Latent ODEs", unsafe_allow_html=True)
 
     st.write("""Nous allons maintenant entraîner une EDO latente afin de répliquer la distribution d'un ensemble de données de certains oscillateurs à amplitudes décroissantes.""") 
     
@@ -416,13 +417,25 @@ elif page == "Latent ODE":
 
     def Matrix_choices():
         st.write(r"Choisir la matrice $A$:")
+        
+        matrices = {
+        "Matrice 1": [[-1, 0], [0, -1]],
+        "Matrice 2": [[-2, 0], [0, -3]],
+        "Matrice 3": [[-2, 1], [-1, -2]],
+        "Matrice 4": [[-1, 2], [-1, -1]]}
 
-        option = st.selectbox(
-            "Select an option:",
-            ("Matrice 1", "Matrice 2", "Matrice 3", "Matrice 4")
-        )
+        for key, value in matrices.items():
+            A = np.array(value)
+            st.write(f"{key}:", r"""
+            $$ 
+            \begin{bmatrix}
+            %s & %s \\
+            %s & %s
+            \end{bmatrix}
+            $$
+            """ % (A[0, 0], A[0, 1], A[1, 0], A[1, 1]))
 
-        if option == "Matrice 1":
+        if st.button("Matrice 1", key = "M1"): 
             A = np.array([[-1, 0], [0, -1]])
             st.write(r"""
             $$ 
@@ -433,8 +446,10 @@ elif page == "Latent ODE":
             \end{bmatrix}
             $$
             """)
+            LEDO_1.main()
             plot_solution(A)
-        elif option == "Matrice 2":
+            
+        elif st.button("Matrice 2", key = "M2"):
             A = np.array([[-2, 0], [0, -3]])
             st.write(r"""
             $$ 
@@ -445,8 +460,10 @@ elif page == "Latent ODE":
             \end{bmatrix}
             $$
             """)
+            LEDO_2.main()
             plot_solution(A)
-        elif option == "Matrice 3":
+            
+        elif st.button("Matrice 3", key = "M3"):
             A = np.array([[-2, 1], [-1, -2]])            
             st.write(r"""
             $$ 
@@ -457,8 +474,10 @@ elif page == "Latent ODE":
             \end{bmatrix}
             $$
             """)
+            LEDO_3.main()
             plot_solution(A)
-        elif option == "Matrice 4":
+            
+        elif st.button("Matrice 4", key = "M4"):
             A = np.array([[-1, 2], [-1, -1]])            
             st.write(r"""
             $$ 
@@ -469,43 +488,40 @@ elif page == "Latent ODE":
             \end{bmatrix}
             $$
             """)
+            LEDO_4.main()
             plot_solution(A)
-        
-        return option
+        return 
     
 
-    def plot_graph_user(option):
+    def plot_graph_user():
         st.title('Evolution du résultat')
 
-        # Start button to initiate the animation
-        if st.button("Commencer l'animation du code avec la matrice choisie", key="start_user_animation_orginal"):
-
-            # Select folder containing PNG files
-            if option == "Matrice 1":
+        # Select folder containing PNG files
+        if st.button("Graphique pour la Matrice 1", key = "G_M1"):
                 folder_path = "data/user_try/latent_plots_1"
-            elif option == "Matrice 2":
+        elif st.button("Graphique pour la Matrice 2", key = "G_M2"):
                 folder_path = "data/user_try/latent_plots_2"
-            elif option == "Matrice 3":
+        elif st.button("Graphique pour la Matrice 3", key = "G_M3"):
                 folder_path = "data/user_try/latent_plots_3"
-            elif option == "Matrice 4":
+        elif st.button("Graphique pour la Matrice 4", key = "G_M4"):
                 folder_path = "data/user_try/latent_plots_4"
 
-            # Check if folder path is provided
-            if folder_path:
+        # Check if folder path is provided
+        if folder_path:
                 # Read PNG files from the folder
-                png_files = read_png_files(folder_path)
+            png_files = read_png_files(folder_path)
 
                 # Placeholder for the selected image
-                selected_image_placeholder = st.empty()
+            selected_image_placeholder = st.empty()
 
                 # Progress through the iterations automatically
-                for i in range(len(png_files)):  # Progress through each step of 10
-                    time.sleep(0.07)  # Adjust the speed of progression
-
+            for i in range(len(png_files)):  # Progress through each step of 10
+                time.sleep(0.07)  # Adjust the speed of progression
+                
                     # Display the selected PNG file
-                    if i < len(png_files):
-                        selected_png = os.path.join(folder_path, png_files[i])
-                        selected_image_placeholder.image(selected_png, use_column_width=True)
+                if i < len(png_files):
+                    selected_png = os.path.join(folder_path, png_files[i])
+                    selected_image_placeholder.image(selected_png, use_column_width=True)
             
             # Create another st.empty() element for the restart button
             restart_button_placeholder = st.empty()
@@ -519,8 +535,10 @@ elif page == "Latent ODE":
     def main():
         plot_graph_example()
         st.title("À votre tour !")
+        st.write("Le code prend beaucoup de temps à s'éxecuter. Vous avez le choix pour les exemples ci dessous qui convergent plutot bien dans en un temps raisonnable.")
+        st.write("Vous pouvez modifier l'argument steps dans les code LEDO à votre choix.")
         option = Matrix_choices()
-        plot_graph_user(option)
+        plot_graph_user()
     
 
     if __name__ == "__main__":
